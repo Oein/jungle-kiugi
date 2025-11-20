@@ -30,7 +30,7 @@ const GAME_HEIGHT = 800;
 const params = {
   width: GAME_WIDTH,
   height: GAME_HEIGHT,
-  autostart: true,
+  autostart: false, // Disable autostart, we'll use manual loop
 };
 const two = new Two(params).appendTo(container);
 
@@ -378,10 +378,24 @@ restartBtn.addEventListener("click", () => {
   initGame();
 });
 
-// Two.js update loop
-two.bind("update", () => {
-  update();
-});
+// Fixed 60 FPS update loop
+const TARGET_FPS = 60;
+const FRAME_TIME = 1000 / TARGET_FPS;
+let lastFrameTime = performance.now();
+
+function gameLoop(currentTime: number) {
+  const deltaTime = currentTime - lastFrameTime;
+
+  if (deltaTime >= FRAME_TIME) {
+    lastFrameTime = currentTime - (deltaTime % FRAME_TIME);
+    update();
+    two.update();
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+requestAnimationFrame(gameLoop);
 
 // Start game immediately
 initGame();
