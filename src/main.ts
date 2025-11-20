@@ -11,7 +11,7 @@ const LDBoard = Leaderboard({
   getGameRunning() {
     return gameRunning;
   },
-  kvAPIKey: mode == "hard" ? "uuqw6zgj" : "wdofblri",
+  kvAPIKey: mode == "hard" ? "jungle-hard" : "jungle-easy",
   notifier: notifier,
 });
 

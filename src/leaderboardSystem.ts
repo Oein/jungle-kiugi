@@ -1,163 +1,10 @@
 import type { NotificationManager } from "./notifier";
-import notifier from "./notifier";
 
 function Leaderboard(props: {
   getGameRunning: () => boolean;
   notifier: NotificationManager;
   kvAPIKey: string;
 }) {
-  class OnKV {
-    skv: string;
-    constructor(skv: string) {
-      this.skv = skv;
-    }
-    get__(key: string) {
-      return fetch(
-        `https://keyvalue.immanuel.co/api/KeyVal/GetValue/${this.skv}/${key}`
-      )
-        .then((res) => res.text())
-        .then((res) => JSON.parse(res));
-    }
-    set__(key: string, value: any) {
-      return fetch(
-        `https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${this.skv}/${key}/${value}`,
-        {
-          method: "POST",
-        }
-      );
-    }
-    async get(key: string) {
-      // it has 60 chars limit
-      // so it should be saved as parts
-      const updatingNotifi = notifier.show(
-        `리더보드 불러오는중...`,
-        Number.MAX_SAFE_INTEGER
-      );
-
-      const parts = await this.get__(key + "_l").then((res) => {
-        const length = parseInt(res, 10);
-        const parts = [];
-        for (let i = 0; i < length; i++) {
-          parts.push(
-            new Promise<any>((resolve) => {
-              this.get__(key + "_" + i).then((res) => {
-                resolve(res);
-                notifier.update(
-                  updatingNotifi,
-                  `리더보드 불러오는중... ${i + 1} / ${length}`,
-                  Number.MAX_SAFE_INTEGER
-                );
-              });
-            })
-          );
-        }
-        console.log(res, length, parts);
-        notifier.update(updatingNotifi, `리더보드 불러오는중... 완료!`, 2000);
-        return Promise.all(parts);
-      });
-      console.log(parts.join(""), parts);
-      return JSON.parse(decodeURIComponent(atob(parts.join(""))));
-    }
-    async set(key: string, value: any) {
-      const updatingNotifi = notifier.show(
-        `리더보드 저장하는중...`,
-        Number.MAX_SAFE_INTEGER
-      );
-      const toSave = btoa(encodeURIComponent(JSON.stringify(value)));
-      const parts = [];
-      const SPILIT_BY = 50;
-      for (let i = 0; i < toSave.length; i += SPILIT_BY) {
-        parts.push(toSave.substring(i, i + SPILIT_BY));
-      }
-      console.log("Saving of", key, "in", parts.length, "parts");
-
-      await this.set__(key + "_l", parts.length);
-      let sent = 0;
-      await Promise.all(
-        parts.map((part, i) => {
-          this.set__(key + "_" + i, part);
-          sent++;
-          notifier.update(
-            updatingNotifi,
-            `리더보드 저장하는중... ${sent} / ${parts.length}`,
-            Number.MAX_SAFE_INTEGER
-          );
-          console.log("Saved part of", key, i + 1, " / ", parts.length);
-        })
-      );
-
-      notifier.update(updatingNotifi, `리더보드 저장 완료!`, 2000);
-    }
-  }
-  const kv = new OnKV(props.kvAPIKey);
-  (window as any).kv = kv;
-
-  class LeaderboardList {
-    list: [string, number, string][];
-    constructor() {
-      this.list = [];
-    }
-    add(name: string, score: number, additionalData: string): boolean {
-      if (name.includes("|") || name.includes(",")) {
-        throw new Error("Name cannot include | or , characters.");
-      }
-      const lsc = this.lastScore();
-      if (score <= lsc && this.list.length >= 10) return false;
-      this.list.push([name, score, additionalData]);
-      this.list.sort((a, b) => b[1] - a[1]);
-      if (this.list.length > 10) this.list = this.list.slice(0, 10);
-      return true;
-    }
-    getList() {
-      return this.list;
-    }
-    setList(list: [string, number, string][]) {
-      this.list = list;
-    }
-    number2base64(num: number) {
-      const chars =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-      let result = "";
-      do {
-        result = chars[num % 64] + result;
-        num = Math.floor(num / 64);
-      } while (num > 0);
-      return result;
-    }
-    base64ToNumber(str: string) {
-      const chars =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-      let result = 0;
-      for (let i = 0; i < str.length; i++) {
-        result = result * 64 + chars.indexOf(str[i]);
-      }
-      return result;
-    }
-    serialize() {
-      return this.list
-        .map((item) => {
-          return `${item[0]}|${item[1].toString(36)}|${item[2]}`;
-        })
-        .join(",");
-    }
-    deserialize(data: string) {
-      console.log("DESERIAL", data);
-      if (data == "") {
-        return this.setList([]);
-      }
-      const list: [string, number, string][] = data.split(",").map((item) => {
-        const parts = item.split("|");
-        return [parts[0], parseInt(parts[1], 36), parts[2]];
-      });
-      console.log("RES", list);
-      this.setList(list);
-    }
-    lastScore() {
-      if (this.list.length === 0) return 0;
-      return this.list[this.list.length - 1][1];
-    }
-  }
-
   const drawer = document.createElement("div");
   drawer.id = "leaderboard-drawer";
   drawer.className = "drawer";
@@ -202,9 +49,6 @@ function Leaderboard(props: {
   });
 
   document.body.appendChild(drawer);
-
-  let leaderboard = new LeaderboardList();
-  let leaderboardFetched = false;
 
   function showLeaderboard(lb: [string, number, string][]) {
     const list = leaderboardList;
@@ -281,11 +125,20 @@ function Leaderboard(props: {
   }
   async function fetchLeaderboard() {
     props.notifier.show("리더보드 불러오는중...");
-    const lbData = await kv.get("lb");
-
-    leaderboard.deserialize(lbData);
-    console.log("Fetched leaderboard:", leaderboard.getList());
-    showLeaderboard(leaderboard.getList());
+    const data = await fetch(
+      "https://oeinleaderboard.ert.im/lb?gameid=" + props.kvAPIKey
+    ).then((res) => res.json());
+    const dataTyped = data as {
+      value: number | null;
+      player: string | null;
+      additionalInfo: string | null;
+    }[];
+    const lbData: [string, number, string][] = dataTyped.map((entry) => [
+      entry.player || "익명",
+      entry.value || 0,
+      entry.additionalInfo || "",
+    ]);
+    showLeaderboard(lbData);
   }
   async function saveScore(
     name: string,
@@ -293,34 +146,26 @@ function Leaderboard(props: {
     additionalData: string
   ) {
     props.notifier.show("점수 저장중...");
-    if (!leaderboardFetched) {
-      await fetchLeaderboard();
-      leaderboardFetched = true;
-    }
-
-    console.log("OLD LB", leaderboard.getList());
-    const added = leaderboard.add(name, score, additionalData);
-    console.log("NEW LB", leaderboard.getList());
-    if (!added) {
-      // props.notifier.show("점수가 리더보드에 들지 못했습니다.");
-      console.log("Score not high enough to enter leaderboard.");
-      return;
-    }
-
-    await kv.set("lb", leaderboard.serialize());
-    props.notifier.show("점수 저장 완료!");
-    console.log("Saved score. New leaderboard:", leaderboard.getList());
-    showLeaderboard(leaderboard.getList());
+    await fetch(`https://oeinleaderboard.ert.im/score`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        gameid: props.kvAPIKey,
+        player: name,
+        value: score,
+        addi: additionalData,
+      }),
+    }).then((res) => res.json());
+    props.notifier.show("점수가 저장되었습니다!");
+    await fetchLeaderboard();
   }
-
-  fetchLeaderboard().then(() => (leaderboardFetched = true));
 
   return {
     saveScore,
     showLeaderboard,
     fetchLeaderboard,
-    leaderboardList,
-    leaderboard,
   };
 }
 
