@@ -53,9 +53,9 @@ resizeGame();
 const PLAYER_SIZE = 30;
 const PLATFORM_WIDTH = mode == "hard" ? 40 : 80;
 const PLATFORM_HEIGHT = 15;
-const PLAYER_SPEED_X = mode == "hard" ? 10000 : 9; // Horizontal speed
-const GRAVITY = mode == "hard" ? 1.3 : 0.6;
-const JUMP_FORCE = mode == "hard" ? -28 : -20;
+const PLAYER_SPEED_X = mode == "hard" ? 10000 : 18; // Horizontal speed (2x)
+const GRAVITY = mode == "hard" ? 2.75 : 1.0; // Gravity (2x)
+const JUMP_FORCE = mode == "hard" ? -40 : -30; // Jump force (2x)
 const PLATFORM_SPAWN_INTERVAL = mode == "hard" ? 240 : 120; // pixels between platforms
 const INITIAL_PLATFORMS = 8;
 const BEDROCK_THRESHOLD = -500; // Player must reach this Y before bedrock disappears
@@ -127,12 +127,18 @@ function initGame() {
 
   // Create initial platforms
   for (let i = 0; i < INITIAL_PLATFORMS; i++) {
-    const platformY = GAME_HEIGHT - 50 - i * PLATFORM_SPAWN_INTERVAL;
+    const platformY =
+      GAME_HEIGHT -
+      50 -
+      i * (PLATFORM_SPAWN_INTERVAL + (mode == "hard" ? 0 : score / 10));
     createPlatform(platformY);
   }
 
   highestPlatformY =
-    GAME_HEIGHT - 50 - (INITIAL_PLATFORMS - 1) * PLATFORM_SPAWN_INTERVAL;
+    GAME_HEIGHT -
+    50 -
+    (INITIAL_PLATFORMS - 1) *
+      (PLATFORM_SPAWN_INTERVAL + (mode == "hard" ? 0 : score / 10));
 
   // Create bedrock platform at the bottom
   startingY = player.y;
@@ -310,8 +316,12 @@ function update() {
   });
 
   // Spawn new platforms
-  while (highestPlatformY - cameraOffsetY > -PLATFORM_SPAWN_INTERVAL) {
-    highestPlatformY -= PLATFORM_SPAWN_INTERVAL;
+  while (
+    highestPlatformY - cameraOffsetY >
+    -(PLATFORM_SPAWN_INTERVAL + (mode == "hard" ? 0 : score / 10))
+  ) {
+    highestPlatformY -=
+      PLATFORM_SPAWN_INTERVAL + (mode == "hard" ? 0 : score / 10);
     createPlatform(highestPlatformY);
   }
 
