@@ -206,7 +206,6 @@ function checkCollision(player: Player, platform: Platform): boolean {
 
   // Regular platforms
   const platformTop = platform.y - PLATFORM_HEIGHT / 2;
-  const platformBottom = platform.y + PLATFORM_HEIGHT / 2;
   const platformLeft = platform.x - PLATFORM_WIDTH / 2;
   const platformRight = platform.x + PLATFORM_WIDTH / 2;
 
