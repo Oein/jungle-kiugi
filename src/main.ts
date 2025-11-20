@@ -191,6 +191,7 @@ function checkCollision(player: Player, platform: Platform): boolean {
   if (player.velocityY <= 0) return false; // Only check when falling
 
   const playerBottom = player.y + PLAYER_SIZE;
+  const playerTop = player.y - PLAYER_SIZE;
   const playerLeft = player.x - PLAYER_SIZE;
   const playerRight = player.x + PLAYER_SIZE;
 
@@ -199,7 +200,8 @@ function checkCollision(player: Player, platform: Platform): boolean {
     const platformTop = platform.y - (PLATFORM_HEIGHT * 2) / 2;
     const platformBottom = platform.y + (PLATFORM_HEIGHT * 2) / 2;
 
-    return playerBottom >= platformTop && playerBottom <= platformBottom;
+    // Check if player is crossing or on the platform
+    return playerBottom >= platformTop && playerTop <= platformBottom;
   }
 
   // Regular platforms
@@ -208,13 +210,14 @@ function checkCollision(player: Player, platform: Platform): boolean {
   const platformLeft = platform.x - PLATFORM_WIDTH / 2;
   const platformRight = platform.x + PLATFORM_WIDTH / 2;
 
-  // Check if player is landing on platform from above
-  return (
-    playerBottom >= platformTop &&
-    playerBottom <= platformBottom &&
-    playerRight >= platformLeft &&
-    playerLeft <= platformRight
-  );
+  // Check if player is landing on platform from above (more lenient)
+  // Player's bottom should be near or past platform top
+  const isAbovePlatform = playerBottom >= platformTop;
+  const isBelowPlatformTop = playerTop <= platformTop + PLATFORM_HEIGHT;
+  const isHorizontallyAligned =
+    playerRight >= platformLeft && playerLeft <= platformRight;
+
+  return isAbovePlatform && isBelowPlatformTop && isHorizontallyAligned;
 }
 
 // Update game
@@ -431,3 +434,10 @@ if (mode != "hard") {
     },
   });
 }
+
+createButton({
+  text: "버전 2.0.0",
+  bgColor: "#9E9E9E",
+  fgColor: "#FFFFFF",
+  onClick: () => {},
+});
