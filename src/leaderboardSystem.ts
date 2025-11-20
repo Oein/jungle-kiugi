@@ -162,6 +162,8 @@ function Leaderboard(props: {
     await fetchLeaderboard();
   }
 
+  fetchLeaderboard();
+
   return {
     saveScore,
     showLeaderboard,
